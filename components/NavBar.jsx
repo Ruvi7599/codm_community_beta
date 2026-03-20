@@ -1,7 +1,48 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+
+// Notification sound using Web Audio API
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch {}
+}
+
+// Browser push notification
+function showBrowserNotification(title, body) {
+  if (typeof window === "undefined") return;
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") {
+    new Notification(title, { body, icon: "/logo.png" });
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(p => {
+      if (p === "granted") {
+        new Notification(title, { body, icon: "/logo.png" });
+      }
+    });
+  }
+}
+
+function timeAgoShort(iso) {
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
 
 export default function NavBar() {
   const [user, setUser] = useState(null);
@@ -12,12 +53,67 @@ export default function NavBar() {
   const [unread, setUnread] = useState([]);
   const [toastQueue, setToastQueue] = useState([]);
   const lastUnreadIds = useRef(new Set());
+
+  // Notification state
+  const [notifications, setNotifications] = useState([]);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [unseenCount, setUnseenCount] = useState(0);
+  const lastSeenNotifIds = useRef(new Set());
+  const bellRef = useRef(null);
+
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
 
-  // Polling for unread messages
+  // Request notification permission on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Poll for notifications
+  useEffect(() => {
+    if (!user) return;
+    const lastSeenAt = localStorage.getItem("codm_notif_lastSeen") || new Date(0).toISOString();
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/notifications?userId=${user.id}&since=${encodeURIComponent(lastSeenAt)}`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setNotifications(data);
+          // Count unseen
+          const storedSeen = localStorage.getItem("codm_notif_lastSeen");
+          const seenTime = storedSeen ? new Date(storedSeen).getTime() : 0;
+          const newOnes = data.filter(n => new Date(n.createdAt).getTime() > seenTime);
+          setUnseenCount(newOnes.length);
+
+          // Play sound + push for truly new ones
+          const currentIds = new Set(data.map(n => n.id));
+          const brandNew = data.filter(n => !lastSeenNotifIds.current.has(n.id) && new Date(n.createdAt).getTime() > seenTime);
+          if (brandNew.length > 0 && lastSeenNotifIds.current.size > 0) {
+            playNotificationSound();
+            brandNew.slice(0, 3).forEach(n => {
+              showBrowserNotification("CODM LK", n.text);
+            });
+          }
+          lastSeenNotifIds.current = currentIds;
+        }
+      } catch {}
+    };
+    poll();
+    const iv = setInterval(poll, 5000);
+    return () => clearInterval(iv);
+  }, [user]);
+
+  const markNotificationsRead = useCallback(() => {
+    localStorage.setItem("codm_notif_lastSeen", new Date().toISOString());
+    setUnseenCount(0);
+  }, []);
+
+  // Polling for unread messages (existing)
   useEffect(() => {
     if (!user) return;
     const poll = async () => {
@@ -40,7 +136,7 @@ export default function NavBar() {
       } catch {}
     };
     poll();
-    const iv = setInterval(poll, 3000); // 3s interval
+    const iv = setInterval(poll, 3000);
     return () => clearInterval(iv);
   }, [user]);
 
@@ -55,6 +151,7 @@ export default function NavBar() {
   useEffect(() => {
     function h(e) { 
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setProfileOpen(false); 
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target) && !e.target.closest('.hamburger-menu-btn')) {
         setMobileMenuOpen(false);
       }
@@ -102,6 +199,13 @@ export default function NavBar() {
     localStorage.removeItem("codm_user");
     router.push("/");
   }
+
+  const notifIcon = (type) => {
+    if (type === "post") return "🔥";
+    if (type === "comment") return "💬";
+    if (type === "message") return "📩";
+    return "🔔";
+  };
 
   const navItems = [
     {
@@ -193,6 +297,110 @@ export default function NavBar() {
             </div>
           ) : (
             <div style={{ width: 50, height: 26 }} />
+          )}
+
+          {/* Notification Bell */}
+          {user && (
+            <div style={{ position: "relative" }} ref={bellRef}>
+              <button
+                onClick={() => {
+                  setBellOpen(v => !v);
+                  if (!bellOpen) markNotificationsRead();
+                }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer", position: "relative",
+                  color: bellOpen ? "var(--ember)" : "var(--text-muted)", padding: "6px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "color 0.2s",
+                }}
+                title="Notifications"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {unseenCount > 0 && (
+                  <div style={{
+                    position: "absolute", top: 2, right: 2,
+                    minWidth: 16, height: 16, background: "#ef4444",
+                    borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "0.6rem", fontWeight: 700, color: "#fff",
+                    padding: "0 4px", border: "2px solid var(--bg-nav)",
+                    animation: "pulse 2s ease-in-out infinite",
+                  }}>
+                    {unseenCount > 99 ? "99+" : unseenCount}
+                  </div>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {bellOpen && (
+                <div style={{
+                  position: "absolute", top: "110%", right: 0,
+                  background: "var(--bg-card)", border: "1px solid var(--border)",
+                  borderRadius: 12, minWidth: 320, maxWidth: 360, maxHeight: 420,
+                  overflowY: "auto", zIndex: 100,
+                  boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+                  animation: "fadeInDown 0.2s ease-out",
+                }}>
+                  <div style={{
+                    padding: "12px 16px", borderBottom: "1px solid var(--border)",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1,
+                    borderRadius: "12px 12px 0 0",
+                  }}>
+                    <span style={{ fontFamily: "Rajdhani, sans-serif", fontWeight: 700, fontSize: "1.1rem", color: "var(--text-main)" }}>
+                      Notifications
+                    </span>
+                    {notifications.length > 0 && (
+                      <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                        {notifications.length} total
+                      </span>
+                    )}
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                      <div style={{ fontSize: "2rem", marginBottom: 8 }}>🔔</div>
+                      No new notifications
+                    </div>
+                  ) : (
+                    <div style={{ padding: "4px 0" }}>
+                      {notifications.slice(0, 25).map(n => (
+                        <Link
+                          key={n.id}
+                          href={n.link}
+                          onClick={() => setBellOpen(false)}
+                          style={{ textDecoration: "none" }}
+                        >
+                          <div
+                            style={{
+                              display: "flex", alignItems: "flex-start", gap: 10,
+                              padding: "10px 16px", transition: "background 0.15s",
+                              cursor: "pointer",
+                            }}
+                            onMouseOver={e => e.currentTarget.style.background = "var(--bg-surface)"}
+                            onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                          >
+                            <span style={{ fontSize: "1.2rem", flexShrink: 0, marginTop: 2 }}>
+                              {notifIcon(n.type)}
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: "0.85rem", color: "var(--text-main)", lineHeight: 1.4 }}>
+                                {n.text}
+                              </div>
+                              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>
+                                {timeAgoShort(n.createdAt)}
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="desktop-nav-links" style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
