@@ -12,6 +12,45 @@ function formatLastSeen(lastActive) {
   return new Date(lastActive).toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+// WhatsApp-style ticks
+function MessageTicks({ msg, isOnline }) {
+  // Only show ticks on sender's messages
+  const tickColor = msg.read ? "#53bdeb" : "rgba(255,255,255,0.5)";
+  
+  if (msg.read) {
+    // Blue double tick = seen
+    return (
+      <span style={{ marginLeft: 4, display: "inline-flex", alignItems: "center" }} title="Seen">
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none">
+          <path d="M11.071 0.653L4.929 7.347L2.429 4.847" stroke={tickColor} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M14.071 0.653L7.929 7.347L6.429 5.847" stroke={tickColor} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </span>
+    );
+  }
+  
+  // Grey double tick = delivered (other user was online recently)
+  if (isOnline) {
+    return (
+      <span style={{ marginLeft: 4, display: "inline-flex", alignItems: "center" }} title="Delivered">
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none">
+          <path d="M11.071 0.653L4.929 7.347L2.429 4.847" stroke={tickColor} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M14.071 0.653L7.929 7.347L6.429 5.847" stroke={tickColor} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </span>
+    );
+  }
+  
+  // Single tick = sent
+  return (
+    <span style={{ marginLeft: 4, display: "inline-flex", alignItems: "center" }} title="Sent">
+      <svg width="12" height="11" viewBox="0 0 12 11" fill="none">
+        <path d="M10.071 0.653L3.929 7.347L1.429 4.847" stroke={tickColor} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </span>
+  );
+}
+
 function MessagesParamsChild({ initialUserId }) {
   const router = useRouter();
   
@@ -25,6 +64,7 @@ function MessagesParamsChild({ initialUserId }) {
   const [loadingChat, setLoadingChat] = useState(false);
   const [text, setText] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // { id, text, senderName }
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -54,7 +94,6 @@ function MessagesParamsChild({ initialUserId }) {
         }
         setUnreadCounts(counts);
         
-        // Refresh users to keep lastActive updated globally
         fetch("/api/users")
           .then(res => res.json())
           .then(userData => {
@@ -84,7 +123,6 @@ function MessagesParamsChild({ initialUserId }) {
           });
           if (!silent) setLoadingChat(false);
 
-          // Fetch typing status
           const tRes = await fetch(`/api/typing?userId=${currentUser.id}&otherUserId=${activeChatId}`);
           const tData = await tRes.json();
           setOtherUserTyping(tData.typing);
@@ -129,11 +167,17 @@ function MessagesParamsChild({ initialUserId }) {
     const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ senderId: currentUser.id, receiverId: activeChatId, text: text.trim() })
+      body: JSON.stringify({
+        senderId: currentUser.id,
+        receiverId: activeChatId,
+        text: text.trim(),
+        replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, senderName: replyingTo.senderName } : null,
+      })
     });
     const newMsg = await res.json();
     setMessages(prev => [...prev, newMsg]);
     setText("");
+    setReplyingTo(null);
   };
 
   const handleClearChat = async () => {
@@ -147,6 +191,7 @@ function MessagesParamsChild({ initialUserId }) {
   };
 
   const activeUser = users.find(u => u.id === activeChatId);
+  const isOtherOnline = activeUser?.lastActive && (Date.now() - activeUser.lastActive < 300000);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-deep)", display: "flex", flexDirection: "column" }}>
@@ -162,7 +207,7 @@ function MessagesParamsChild({ initialUserId }) {
             {!loadingUsers && users.map(u => (
               <div 
                 key={u.id}
-                onClick={() => setActiveChatId(u.id)}
+                onClick={() => { setActiveChatId(u.id); setReplyingTo(null); }}
                 style={{ 
                   display: "flex", alignItems: "center", gap: "0.75rem", padding: "10px", 
                   borderRadius: "8px", cursor: "pointer",
@@ -208,7 +253,7 @@ function MessagesParamsChild({ initialUserId }) {
               {/* Chat Header */}
               <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid var(--border)", background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                  <button onClick={() => setActiveChatId(null)} className="btn-ghost mobile-back-btn" style={{ padding: "0.4rem", marginRight: "0.2rem" }}>
+                  <button onClick={() => { setActiveChatId(null); setReplyingTo(null); }} className="btn-ghost mobile-back-btn" style={{ padding: "0.4rem", marginRight: "0.2rem" }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
                   </button>
                   <div className="avatar-circle-sm" style={{ width: 40, height: 40, fontSize: "1rem" }}>
@@ -217,8 +262,8 @@ function MessagesParamsChild({ initialUserId }) {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-main)", lineHeight: 1.2 }}>{activeUser.codmName}</div>
-                      {activeUser.lastActive && (Date.now() - activeUser.lastActive < 300000) && (
-                        <div style={{ width: 8, height: 8, background: "#22c55e", borderRadius: "50%", title: "Active now" }} />
+                      {isOtherOnline && (
+                        <div style={{ width: 8, height: 8, background: "#22c55e", borderRadius: "50%" }} title="Active now" />
                       )}
                     </div>
                     {otherUserTyping ? (
@@ -239,7 +284,7 @@ function MessagesParamsChild({ initialUserId }) {
               </div>
 
               {/* Chat Messages */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem", background: "var(--bg-deep)" }}>
+              <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem", background: "var(--bg-deep)" }}>
                 {loadingChat ? (
                   <div style={{ textAlign: "center", color: "var(--text-muted)", marginTop: "auto", marginBottom: "auto" }}>Loading messages...</div>
                 ) : messages.length === 0 ? (
@@ -250,19 +295,46 @@ function MessagesParamsChild({ initialUserId }) {
                   messages.map(msg => {
                     const isMine = msg.senderId === currentUser.id;
                     return (
-                      <div key={msg.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start" }}>
-                        <div style={{ 
-                          background: isMine ? "linear-gradient(135deg, var(--ember), var(--ember-dark))" : "var(--bg-surface)",
-                          color: isMine ? "#fff" : "var(--text-main)",
-                          padding: "0.75rem 1rem", borderRadius: "16px",
-                          borderBottomRightRadius: isMine ? "4px" : "16px",
-                          borderBottomLeftRadius: isMine ? "16px" : "4px",
-                          maxWidth: "70%", wordBreak: "break-word",
-                          border: isMine ? "none" : "1px solid var(--border)"
-                        }}>
+                      <div key={msg.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 2 }}>
+                        <div
+                          style={{ 
+                            background: isMine ? "linear-gradient(135deg, var(--ember), var(--ember-dark))" : "var(--bg-surface)",
+                            color: isMine ? "#fff" : "var(--text-main)",
+                            padding: "0.5rem 0.75rem", borderRadius: "16px",
+                            borderBottomRightRadius: isMine ? "4px" : "16px",
+                            borderBottomLeftRadius: isMine ? "16px" : "4px",
+                            maxWidth: "70%", wordBreak: "break-word",
+                            border: isMine ? "none" : "1px solid var(--border)",
+                            cursor: "pointer",
+                            position: "relative",
+                          }}
+                          onDoubleClick={() => {
+                            setReplyingTo({
+                              id: msg.id,
+                              text: msg.text.length > 60 ? msg.text.substring(0, 60) + "..." : msg.text,
+                              senderName: isMine ? "You" : activeUser.codmName,
+                            });
+                          }}
+                        >
+                          {/* Reply tag */}
+                          {msg.replyTo && (
+                            <div style={{
+                              fontSize: "0.72rem", color: isMine ? "rgba(255,255,255,0.75)" : "var(--text-muted)",
+                              borderLeft: isMine ? "2px solid rgba(255,255,255,0.5)" : "2px solid var(--ember)",
+                              paddingLeft: 6, marginBottom: 4,
+                              background: isMine ? "rgba(255,255,255,0.1)" : "rgba(249,115,22,0.06)",
+                              borderRadius: "0 4px 4px 0", padding: "3px 8px",
+                            }}>
+                              <div style={{ fontWeight: 600, fontSize: "0.68rem", marginBottom: 1 }}>
+                                {msg.replyTo.senderName}
+                              </div>
+                              {msg.replyTo.text}
+                            </div>
+                          )}
                           {msg.text}
-                          <div style={{ fontSize: "0.65rem", color: isMine ? "rgba(255,255,255,0.7)" : "var(--text-muted)", marginTop: "4px", textAlign: "right" }}>
+                          <div style={{ fontSize: "0.6rem", color: isMine ? "rgba(255,255,255,0.6)" : "var(--text-muted)", marginTop: "3px", textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {isMine && <MessageTicks msg={msg} isOnline={isOtherOnline} />}
                           </div>
                         </div>
                       </div>
@@ -284,21 +356,40 @@ function MessagesParamsChild({ initialUserId }) {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input */}
-              <div style={{ padding: "1rem", borderTop: "1px solid var(--border)", background: "var(--bg-surface)" }}>
-                <form onSubmit={handleSend} style={{ display: "flex", gap: "0.5rem" }}>
-                  <input 
-                    type="text" 
-                    className="input-field" 
-                    placeholder="Type a message..." 
-                    value={text} 
-                    onChange={e => setText(e.target.value)} 
-                    style={{ flex: 1, borderRadius: "24px", padding: "0.75rem 1.25rem" }}
-                  />
-                  <button type="submit" className="btn-ember" style={{ borderRadius: "24px", padding: "0 1.5rem" }} disabled={!text.trim()}>
-                    Send
-                  </button>
-                </form>
+              {/* Reply Banner + Input */}
+              <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-surface)" }}>
+                {replyingTo && (
+                  <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "8px 1rem", borderBottom: "1px solid var(--border)",
+                    background: "rgba(249,115,22,0.05)",
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "0.72rem", color: "var(--ember)", fontWeight: 600 }}>
+                        ↩ Replying to {replyingTo.senderName}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {replyingTo.text}
+                      </div>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "1rem", padding: "0 6px", flexShrink: 0 }}>✕</button>
+                  </div>
+                )}
+                <div style={{ padding: "0.75rem 1rem" }}>
+                  <form onSubmit={handleSend} style={{ display: "flex", gap: "0.5rem" }}>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder={replyingTo ? "Reply..." : "Type a message..."} 
+                      value={text} 
+                      onChange={e => setText(e.target.value)} 
+                      style={{ flex: 1, borderRadius: "24px", padding: "0.75rem 1.25rem" }}
+                    />
+                    <button type="submit" className="btn-ember" style={{ borderRadius: "24px", padding: "0 1.5rem" }} disabled={!text.trim()}>
+                      Send
+                    </button>
+                  </form>
+                </div>
               </div>
             </>
           ) : (

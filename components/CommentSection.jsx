@@ -9,6 +9,7 @@ export default function CommentSection({ postId, comments: initialComments = [],
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editInput, setEditInput] = useState("");
   const [commentToDelete, setCommentToDelete] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null); // { id, codmName }
 
   async function submitComment(e) {
     e.preventDefault();
@@ -18,12 +19,18 @@ export default function CommentSection({ postId, comments: initialComments = [],
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId, userId: currentUser.id, text: input.trim() }),
+        body: JSON.stringify({
+          postId,
+          userId: currentUser.id,
+          text: input.trim(),
+          replyTo: replyingTo ? { id: replyingTo.id, codmName: replyingTo.codmName } : null,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setComments((prev) => [...prev, data.comment]);
         setInput("");
+        setReplyingTo(null);
         setExpanded(true);
       }
     } finally {
@@ -118,13 +125,35 @@ export default function CommentSection({ postId, comments: initialComments = [],
                   <span style={{ color: "var(--ember)", fontSize: "0.8rem", fontWeight: 700, marginRight: 6 }}>{c.codmName}</span>
                   <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>{timeAgo(c.createdAt)}</div>
                 </div>
-                {currentUser?.id === c.userId && !editingCommentId && (
-                  <div style={{ display: "flex", gap: "6px" }}>
-                    <button onClick={() => { setEditingCommentId(c.id); setEditInput(c.text); }} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "0.7rem", cursor: "pointer" }}>Edit</button>
-                    <button onClick={() => requestDelete(c.id)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.7rem", cursor: "pointer" }}>Delete</button>
-                  </div>
-                )}
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {currentUser && (
+                    <button
+                      onClick={() => { setReplyingTo({ id: c.id, codmName: c.codmName }); setExpanded(true); }}
+                      style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "0.7rem", cursor: "pointer" }}
+                    >
+                      Reply
+                    </button>
+                  )}
+                  {currentUser?.id === c.userId && !editingCommentId && (
+                    <>
+                      <button onClick={() => { setEditingCommentId(c.id); setEditInput(c.text); }} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "0.7rem", cursor: "pointer" }}>Edit</button>
+                      <button onClick={() => requestDelete(c.id)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.7rem", cursor: "pointer" }}>Delete</button>
+                    </>
+                  )}
+                </div>
               </div>
+
+              {/* Reply tag */}
+              {c.replyTo && (
+                <div style={{
+                  fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 3,
+                  borderLeft: "2px solid var(--ember)", paddingLeft: 6,
+                  background: "rgba(249,115,22,0.06)", borderRadius: "0 4px 4px 0",
+                  padding: "2px 6px 2px 6px",
+                }}>
+                  ↩ replying to <span style={{ color: "var(--ember)", fontWeight: 600 }}>@{c.replyTo.codmName}</span>
+                </div>
+              )}
               
               {editingCommentId === c.id ? (
                 <div style={{ marginTop: "6px", display: "flex", gap: "6px", flexDirection: "column" }}>
@@ -141,7 +170,7 @@ export default function CommentSection({ postId, comments: initialComments = [],
                   </div>
                 </div>
               ) : (
-                <span style={{ fontSize: "0.85rem", color: "#e2e8f0", marginTop: 4, wordBreak: "break-word" }}>{c.text}</span>
+                <span style={{ fontSize: "0.85rem", color: "var(--text-main)", marginTop: 4, wordBreak: "break-word" }}>{c.text}</span>
               )}
             </div>
           </div>
@@ -149,33 +178,47 @@ export default function CommentSection({ postId, comments: initialComments = [],
       ))}
 
       {currentUser && (
-        <form onSubmit={submitComment} className="comment-input-wrap">
-          <div className="comment-avatar" style={{ width: 28, height: 28, fontSize: "0.7rem" }}>
-            {currentUser.avatar
-              ? <img src={currentUser.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : currentUser.codmName?.[0]?.toUpperCase()
-            }
-          </div>
-          <input
-            className="comment-input"
-            placeholder="Add a comment..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            maxLength={300}
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || submitting}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: input.trim() ? "var(--ember)" : "var(--text-muted)",
-              fontWeight: 700, fontSize: "0.85rem", padding: "0 4px",
-              transition: "color 0.2s"
-            }}
-          >
-            Post
-          </button>
-        </form>
+        <>
+          {/* Reply banner */}
+          {replyingTo && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "6px 10px", marginTop: 6, marginBottom: -2,
+              background: "rgba(249,115,22,0.08)", borderLeft: "3px solid var(--ember)",
+              borderRadius: "0 6px 6px 0", fontSize: "0.78rem", color: "var(--text-muted)",
+            }}>
+              <span>Replying to <span style={{ color: "var(--ember)", fontWeight: 600 }}>@{replyingTo.codmName}</span></span>
+              <button onClick={() => setReplyingTo(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.85rem", padding: "0 4px" }}>✕</button>
+            </div>
+          )}
+          <form onSubmit={submitComment} className="comment-input-wrap">
+            <div className="comment-avatar" style={{ width: 28, height: 28, fontSize: "0.7rem" }}>
+              {currentUser.avatar
+                ? <img src={currentUser.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : currentUser.codmName?.[0]?.toUpperCase()
+              }
+            </div>
+            <input
+              className="comment-input"
+              placeholder={replyingTo ? `Reply to @${replyingTo.codmName}...` : "Add a comment..."}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              maxLength={300}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || submitting}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: input.trim() ? "var(--ember)" : "var(--text-muted)",
+                fontWeight: 700, fontSize: "0.85rem", padding: "0 4px",
+                transition: "color 0.2s"
+              }}
+            >
+              Post
+            </button>
+          </form>
+        </>
       )}
 
       {!currentUser && comments.length === 0 && (

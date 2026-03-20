@@ -16,7 +16,7 @@ export async function GET(request) {
 
 // POST add comment
 export async function POST(request) {
-  const { postId, userId, text } = await request.json();
+  const { postId, userId, text, replyTo } = await request.json();
 
   if (!postId || !userId || !text?.trim()) {
     return Response.json({ error: "postId, userId, text required" }, { status: 400 });
@@ -37,6 +37,7 @@ export async function POST(request) {
     codmName: user.codmName,
     avatar: user.avatar || null,
     text: text.trim(),
+    replyTo: replyTo || null,
     createdAt: new Date().toISOString(),
   };
 

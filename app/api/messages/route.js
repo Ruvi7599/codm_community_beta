@@ -33,7 +33,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { senderId, receiverId, text } = body;
+  const { senderId, receiverId, text, replyTo } = body;
 
   if (!senderId || !receiverId || !text) {
     return Response.json({ error: "Missing fields" }, { status: 400 });
@@ -47,6 +47,7 @@ export async function POST(request) {
     senderId,
     receiverId,
     text,
+    replyTo: replyTo || null,
     createdAt: new Date().toISOString(),
     read: false
   };
