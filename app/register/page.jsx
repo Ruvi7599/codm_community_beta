@@ -54,20 +54,16 @@ export default function RegisterPage() {
 
   return (
     <div
+      className="flex flex-col lg:flex-row items-center justify-center min-h-screen px-5 py-10 lg:gap-16 gap-8"
       style={{
-        minHeight: "100vh",
-        padding: "2rem 1.25rem",
         background: "radial-gradient(ellipse at top, rgba(249, 115, 22, 0.1) 0%, var(--bg-deep) 60%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
       }}
     >
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <img src="/logo.png" alt="CODM LK" style={{ width: 150, height: "auto", marginBottom: "1rem" }} />
-        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
-          Set up your player profile
+      <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <img src="/logo.png" alt="CODM LK" style={{ width: 220, height: "auto", marginBottom: "1.5rem", display: "block" }} />
+        <p style={{ color: "var(--text-muted)", fontSize: "1.1rem", maxWidth: 300, textAlign: "center" }}>
+          Set up your player profile and join the ultimate Sri Lankan CODM Hub.
         </p>
       </div>
 
