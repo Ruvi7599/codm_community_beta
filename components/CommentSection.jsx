@@ -8,6 +8,7 @@ export default function CommentSection({ postId, comments: initialComments = [],
   const [submitting, setSubmitting] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editInput, setEditInput] = useState("");
+  const [commentToDelete, setCommentToDelete] = useState(null);
 
   async function submitComment(e) {
     e.preventDefault();
@@ -50,8 +51,13 @@ export default function CommentSection({ postId, comments: initialComments = [],
     }
   }
 
-  async function handleDelete(commentId) {
-    if (!confirm("Delete this comment?")) return;
+  function requestDelete(commentId) {
+    setCommentToDelete(commentId);
+  }
+
+  async function executeDelete() {
+    if (!commentToDelete) return;
+    const commentId = commentToDelete;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/comments?postId=${postId}&commentId=${commentId}&userId=${currentUser.id}`, {
@@ -63,6 +69,7 @@ export default function CommentSection({ postId, comments: initialComments = [],
       }
     } finally {
       setSubmitting(false);
+      setCommentToDelete(null);
     }
   }
 
@@ -114,7 +121,7 @@ export default function CommentSection({ postId, comments: initialComments = [],
                 {currentUser?.id === c.userId && !editingCommentId && (
                   <div style={{ display: "flex", gap: "6px" }}>
                     <button onClick={() => { setEditingCommentId(c.id); setEditInput(c.text); }} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "0.7rem", cursor: "pointer" }}>Edit</button>
-                    <button onClick={() => handleDelete(c.id)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.7rem", cursor: "pointer" }}>Delete</button>
+                    <button onClick={() => requestDelete(c.id)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.7rem", cursor: "pointer" }}>Delete</button>
                   </div>
                 )}
               </div>
@@ -173,6 +180,22 @@ export default function CommentSection({ postId, comments: initialComments = [],
 
       {!currentUser && comments.length === 0 && (
         <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>No comments yet.</p>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {commentToDelete && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="glass-card" style={{ padding: "1.5rem", width: "90%", maxWidth: 320, background: "var(--bg-card)" }}>
+            <h3 style={{ margin: "0 0 1rem", fontSize: "1.1rem", fontFamily: "Rajdhani, sans-serif", fontWeight: 700 }}>Delete Comment</h3>
+            <p style={{ margin: "0 0 1.5rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>Are you sure you want to delete this comment? This action cannot be undone.</p>
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+              <button disabled={submitting} onClick={() => setCommentToDelete(null)} style={{ background: "none", border: "1px solid var(--border)", color: "var(--text-main)", padding: "6px 16px", borderRadius: 6, cursor: "pointer", fontSize: "0.9rem" }}>Cancel</button>
+              <button disabled={submitting} onClick={executeDelete} style={{ background: "#ef4444", border: "none", color: "#fff", padding: "6px 16px", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}>
+                {submitting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
