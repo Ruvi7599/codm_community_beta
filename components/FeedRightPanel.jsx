@@ -78,7 +78,7 @@ export default function FeedRightPanel() {
                       <div style={{ fontSize: "0.7rem", color: isOnline ? "#22c55e" : "var(--text-muted)" }}>
                         {isOnline
                           ? "Active now"
-                          : lastSeenMins !== null
+                          : lastSeenText !== null
                             ? `Last seen ${lastSeenText}`
                             : u.rank
                         }
