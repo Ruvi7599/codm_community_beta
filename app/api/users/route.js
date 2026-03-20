@@ -1,7 +1,7 @@
 import { readDB } from "@/lib/db";
 
 export async function GET() {
-  const db = readDB();
+  const db = await readDB();
 
   // Return limited info
   const users = db.users.map((u) => ({

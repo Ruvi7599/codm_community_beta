@@ -7,7 +7,7 @@ export async function GET(request) {
 
   if (!userId) return Response.json({ error: "Missing userId" }, { status: 400 });
 
-  const db = readDB();
+  const db = await readDB();
   if (!db.messages) db.messages = [];
   
   if (otherUserId) {
@@ -18,7 +18,7 @@ export async function GET(request) {
         changed = true;
       }
     });
-    if (changed) writeDB(db);
+    if (changed) await writeDB(db);
 
     const chat = db.messages.filter(m => 
       (m.senderId === userId && m.receiverId === otherUserId) ||
@@ -39,7 +39,7 @@ export async function POST(request) {
     return Response.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   if (!db.messages) db.messages = [];
 
   const newMessage = {
@@ -52,7 +52,7 @@ export async function POST(request) {
   };
 
   db.messages.push(newMessage);
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json(newMessage, { status: 201 });
 }
@@ -65,7 +65,7 @@ export async function DELETE(request) {
     return Response.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   if (!db.messages) db.messages = [];
 
   const filtered = db.messages.filter(m => 
@@ -74,7 +74,7 @@ export async function DELETE(request) {
   );
 
   db.messages = filtered;
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json({ success: true });
 }

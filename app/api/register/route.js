@@ -4,7 +4,8 @@ export async function POST(request) {
   const body = await request.json();
   const { name, email, password, codmName, codmId, rank, level, gender, facebook, tiktok, discord } = body;
 
-  const db = readDB();
+  const db = await readDB();
+
 
   // Check if email already exists
   const existing = db.users.find((u) => u.email === email);
@@ -30,7 +31,7 @@ export async function POST(request) {
   };
 
   db.users.push(newUser);
-  writeDB(db);
+  await writeDB(db);
 
   // Return user without password
   const { password: _pw, ...safeUser } = newUser;

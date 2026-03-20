@@ -4,7 +4,7 @@ import { readDB } from "@/lib/db";
 export async function GET(request, { params }) {
   const { userId } = await params;
 
-  const db = readDB();
+  const db = await readDB();
   const user = db.users.find((u) => u.id === userId);
   if (!user) return Response.json({ error: "User not found" }, { status: 404 });
 

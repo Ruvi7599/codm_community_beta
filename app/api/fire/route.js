@@ -7,7 +7,7 @@ export async function POST(request) {
     return Response.json({ error: "postId is required" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const post = db.posts.find((p) => p.id === postId);
 
   if (!post) {
@@ -15,7 +15,7 @@ export async function POST(request) {
   }
 
   post.fires = (post.fires || 0) + 1;
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json({ success: true, fires: post.fires });
 }

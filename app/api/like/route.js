@@ -7,7 +7,7 @@ export async function POST(request) {
     return Response.json({ error: "postId and userId required" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const post = db.posts.find((p) => p.id === postId);
   if (!post) {
     return Response.json({ error: "Post not found" }, { status: 404 });
@@ -37,7 +37,7 @@ export async function POST(request) {
   }
 
   post.fires = post.likedBy.length;
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json({
     success: true,

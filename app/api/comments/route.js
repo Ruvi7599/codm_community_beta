@@ -7,7 +7,7 @@ export async function GET(request) {
 
   if (!postId) return Response.json({ error: "postId required" }, { status: 400 });
 
-  const db = readDB();
+  const db = await readDB();
   const post = db.posts.find((p) => p.id === postId);
   if (!post) return Response.json({ error: "Post not found" }, { status: 404 });
 
@@ -22,7 +22,7 @@ export async function POST(request) {
     return Response.json({ error: "postId, userId, text required" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const post = db.posts.find((p) => p.id === postId);
   if (!post) return Response.json({ error: "Post not found" }, { status: 404 });
 
@@ -41,7 +41,7 @@ export async function POST(request) {
   };
 
   post.comments.push(comment);
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json({ success: true, comment });
 }

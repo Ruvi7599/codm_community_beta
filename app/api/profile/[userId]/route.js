@@ -2,7 +2,8 @@ import { readDB, writeDB } from "@/lib/db";
 
 export async function GET(request, { params }) {
   const { userId } = await params;
-  const db = readDB();
+  const db = await readDB();
+
 
   const user = db.users.find((u) => u.id === userId);
   if (!user) {
@@ -21,7 +22,7 @@ export async function PUT(request, { params }) {
   const { userId } = await params;
   const body = await request.json();
 
-  const db = readDB();
+  const db = await readDB();
   const user = db.users.find((u) => u.id === userId);
   if (!user) return Response.json({ error: "User not found" }, { status: 404 });
 
@@ -37,7 +38,7 @@ export async function PUT(request, { params }) {
     }
   }
 
-  writeDB(db);
+  await writeDB(db);
 
   const { password: _pw, ...safeUser } = user;
   return Response.json({ success: true, user: safeUser });
@@ -45,7 +46,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   const { userId } = await params;
-  const db = readDB();
+  const db = await readDB();
 
   // 1. Remove User
   db.users = db.users.filter((u) => u.id !== userId);
@@ -63,6 +64,6 @@ export async function DELETE(request, { params }) {
   // 4. Remove all Messages involving this user
   db.messages = db.messages.filter(m => m.from !== userId && m.to !== userId);
 
-  writeDB(db);
+  await writeDB(db);
   return Response.json({ success: true });
 }

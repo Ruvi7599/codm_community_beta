@@ -9,7 +9,7 @@ export async function PUT(request, { params }) {
     return Response.json({ error: "Content required" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const post = db.posts.find((p) => p.id.toString() === postId);
   if (!post) return Response.json({ error: "Post not found" }, { status: 404 });
 
@@ -22,7 +22,7 @@ export async function PUT(request, { params }) {
     post.imageUrl = imageUrl;
   }
   post.edited = true;
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json({ success: true, post });
 }
@@ -32,7 +32,7 @@ export async function DELETE(request, { params }) {
   const { postId } = await params;
   const { userId } = await request.json();
 
-  const db = readDB();
+  const db = await readDB();
   const postIdx = db.posts.findIndex((p) => p.id.toString() === postId);
   if (postIdx === -1) return Response.json({ error: "Post not found" }, { status: 404 });
 
@@ -48,6 +48,6 @@ export async function DELETE(request, { params }) {
     savedPosts: (u.savedPosts || []).filter((id) => id !== postId),
   }));
 
-  writeDB(db);
+  await writeDB(db);
   return Response.json({ success: true });
 }

@@ -1,7 +1,7 @@
 import { readDB, writeDB } from "@/lib/db";
 
 export async function GET() {
-  const db = readDB();
+  const db = await readDB();
 
   const postsWithUser = db.posts
     .map((post) => {
@@ -32,7 +32,7 @@ export async function POST(request) {
     return Response.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
 
   const newPost = {
     id: Date.now().toString(),
@@ -47,7 +47,7 @@ export async function POST(request) {
   };
 
   db.posts.unshift(newPost);
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json(newPost, { status: 201 });
 }

@@ -11,7 +11,7 @@ export async function POST(request) {
     return Response.json({ error: "New password must be at least 6 characters" }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const user = db.users.find((u) => u.id === userId);
   if (!user) return Response.json({ error: "User not found" }, { status: 404 });
 
@@ -20,7 +20,7 @@ export async function POST(request) {
   }
 
   user.password = newPassword;
-  writeDB(db);
+  await writeDB(db);
 
   return Response.json({ success: true });
 }

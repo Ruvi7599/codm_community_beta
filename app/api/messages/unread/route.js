@@ -6,7 +6,7 @@ export async function GET(request) {
 
   if (!userId) return Response.json({ error: "Missing userId" }, { status: 400 });
 
-  const db = readDB();
+  const db = await readDB();
   if (!db.messages) return Response.json([]);
 
   const unreadMessages = db.messages
