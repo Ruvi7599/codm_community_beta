@@ -145,15 +145,7 @@ export default function NavBar() {
         padding: "0 1.5rem", height: 60,
       }}>
         <Link href="/feed" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: "1.4rem" }}>🔥</span>
-          <span style={{
-            fontFamily: "Rajdhani, sans-serif", fontWeight: 700, fontSize: "1.3rem",
-            background: "linear-gradient(135deg, var(--ember), var(--gold))",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            letterSpacing: "0.05em"
-          }}>
-            CODM LK
-          </span>
+          <img src="/logo.png" alt="CODM LK" style={{ height: 40, width: "auto" }} />
         </Link>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>

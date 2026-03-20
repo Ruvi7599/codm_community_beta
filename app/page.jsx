@@ -47,23 +47,7 @@ export default function LandingPage() {
     >
       {/* Hero */}
       <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-        <div style={{ fontSize: "3.5rem", marginBottom: "0.75rem" }}>🔥</div>
-        <h1
-          style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontWeight: 700,
-            fontSize: "clamp(2rem, 6vw, 3.5rem)",
-            background: "linear-gradient(135deg, #f97316, #fbbf24)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            lineHeight: 1.1,
-            letterSpacing: "0.04em",
-            marginBottom: "0.5rem",
-          }}
-        >
-          CODM LK
-        </h1>
+        <img src="/logo.png" alt="CODM LK" style={{ width: 180, height: "auto", marginBottom: "1rem" }} />
         <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", maxWidth: "340px", margin: "0 auto" }}>
           Sri Lanka's Call of Duty Mobile community. Connect with players, share your game.
         </p>

@@ -64,16 +64,8 @@ export default function RegisterPage() {
       }}
     >
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-        <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>🔥</div>
-        <h1
-          style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
-            fontSize: "2rem", color: "var(--text-main)", letterSpacing: "0.05em",
-          }}
-        >
-          Join CODM LK
-        </h1>
+      <div style={{ textAlign: "center", marginBottom: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <img src="/logo.png" alt="CODM LK" style={{ width: 150, height: "auto", marginBottom: "1rem" }} />
         <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
           Set up your player profile
         </p>
