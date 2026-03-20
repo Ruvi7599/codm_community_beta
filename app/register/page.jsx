@@ -10,7 +10,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "", email: "", password: "",
     codmName: "", codmId: "", rank: "Rookie", level: "",
-    gender: "Male", facebook: "", tiktok: "", discord: "",
+    gender: "Male"
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -144,20 +144,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Social links */}
-          <p style={{ ...sectionTitle, marginTop: "1rem" }}>Social Links <span style={{ color: "var(--text-muted)", opacity: 0.8, fontSize: "0.75rem", textTransform: "none", fontFamily: "'Inter', sans-serif" }}>(optional)</span></p>
-          <div>
-            <label style={labelStyle}>Facebook</label>
-            <input className="input-field" name="facebook" placeholder="facebook.com/yourname" value={form.facebook} onChange={handleChange} id="reg-facebook" />
-          </div>
-          <div>
-            <label style={labelStyle}>TikTok</label>
-            <input className="input-field" name="tiktok" placeholder="@yourtiktok" value={form.tiktok} onChange={handleChange} id="reg-tiktok" />
-          </div>
-          <div>
-            <label style={labelStyle}>Discord</label>
-            <input className="input-field" name="discord" placeholder="username#0000" value={form.discord} onChange={handleChange} id="reg-discord" />
-          </div>
+
 
           <button
             type="submit" className="btn-ember"
