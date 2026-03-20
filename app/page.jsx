@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -8,7 +8,18 @@ export default function LandingPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const router = useRouter();
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    const u = localStorage.getItem("codm_user");
+    if (u) {
+      router.replace("/feed");
+    } else {
+      setChecking(false);
+    }
+  }, [router]);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -31,6 +42,18 @@ export default function LandingPage() {
 
     localStorage.setItem("codm_user", JSON.stringify(data.user));
     router.push("/feed");
+  }
+
+  // Show nothing while checking session
+  if (checking) {
+    return (
+      <div style={{
+        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+        background: "var(--bg-deep)",
+      }}>
+        <img src="/logo.png" alt="CODM LK" style={{ width: 100, height: "auto", opacity: 0.5, animation: "pulse 1.5s ease-in-out infinite" }} />
+      </div>
+    );
   }
 
   return (
