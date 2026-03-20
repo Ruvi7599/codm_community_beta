@@ -3,6 +3,15 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
+function formatLastSeen(lastActive) {
+  const diffMs = Date.now() - lastActive;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(lastActive).toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 function MessagesParamsChild({ initialUserId }) {
   const router = useRouter();
   
@@ -177,7 +186,7 @@ function MessagesParamsChild({ initialUserId }) {
                     {u.lastActive && (Date.now() - u.lastActive < 300000)
                       ? "Active now"
                       : u.lastActive
-                        ? `Last seen ${Math.floor((Date.now() - u.lastActive) / 60000)}m ago`
+                        ? `Last seen ${formatLastSeen(u.lastActive)}`
                         : u.rank
                     }
                   </div>
@@ -217,7 +226,7 @@ function MessagesParamsChild({ initialUserId }) {
                     ) : (
                       <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                         {activeUser.lastActive && (Date.now() - activeUser.lastActive >= 300000) 
-                          ? `Last seen ${Math.floor((Date.now() - activeUser.lastActive)/60000)} mins ago` 
+                          ? `Last seen ${formatLastSeen(activeUser.lastActive)}`
                           : <Link href={`/profile/${activeUser.id}`} style={{ color: "var(--ember)", textDecoration: "none" }}>View Profile</Link>
                         }
                       </div>

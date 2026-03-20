@@ -2,6 +2,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+function formatLastSeen(lastActive) {
+  const diffMs = Date.now() - lastActive;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(lastActive).toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 export default function FeedRightPanel() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +56,7 @@ export default function FeedRightPanel() {
               String(u.id).toLowerCase().includes(searchQuery.toLowerCase())
             ).map(u => {
               const isOnline = u.lastActive && (Date.now() - u.lastActive < 300000);
-              const lastSeenMins = u.lastActive ? Math.floor((Date.now() - u.lastActive) / 60000) : null;
+              const lastSeenText = u.lastActive ? formatLastSeen(u.lastActive) : null;
               return (
                 <Link key={u.id} href={`/profile/${u.id}`} style={{ textDecoration: "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "6px", borderRadius: "8px", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "var(--bg-surface)"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
@@ -70,7 +79,7 @@ export default function FeedRightPanel() {
                         {isOnline
                           ? "Active now"
                           : lastSeenMins !== null
-                            ? `Last seen ${lastSeenMins}m ago`
+                            ? `Last seen ${lastSeenText}`
                             : u.rank
                         }
                       </div>
