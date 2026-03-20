@@ -8,13 +8,18 @@ export default function FeedRightPanel() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetch("/api/users")
-      .then(res => res.json())
-      .then(data => {
-        setUsers(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const fetchUsers = () => {
+      fetch("/api/users")
+        .then(res => res.json())
+        .then(data => {
+          setUsers(data);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    };
+    fetchUsers();
+    const iv = setInterval(fetchUsers, 30000); // refresh every 30s
+    return () => clearInterval(iv);
   }, []);
 
   return (
@@ -40,29 +45,40 @@ export default function FeedRightPanel() {
             {users.filter(u => 
               u.codmName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
               String(u.id).toLowerCase().includes(searchQuery.toLowerCase())
-            ).map(u => (
-              <Link key={u.id} href={`/profile/${u.id}`} style={{ textDecoration: "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "6px", borderRadius: "8px", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "var(--bg-surface)"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
-                  <div style={{ position: "relative" }}>
-                    <div className="avatar-circle-sm" style={{ width: 36, height: 36, fontSize: "0.9rem" }}>
-                      {u.avatar
-                        ? <img src={u.avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : u.codmName?.[0]?.toUpperCase()
-                      }
+            ).map(u => {
+              const isOnline = u.lastActive && (Date.now() - u.lastActive < 300000);
+              const lastSeenMins = u.lastActive ? Math.floor((Date.now() - u.lastActive) / 60000) : null;
+              return (
+                <Link key={u.id} href={`/profile/${u.id}`} style={{ textDecoration: "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "6px", borderRadius: "8px", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "var(--bg-surface)"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      <div className="avatar-circle-sm" style={{ width: 36, height: 36, fontSize: "0.9rem" }}>
+                        {u.avatar
+                          ? <img src={u.avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : u.codmName?.[0]?.toUpperCase()
+                        }
+                      </div>
+                      {isOnline && (
+                        <div style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, background: "#22c55e", borderRadius: "50%", border: "2px solid var(--bg-card)" }} />
+                      )}
                     </div>
-                    {u.isActive && (
-                      <div style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, background: "#22c55e", borderRadius: "50%", border: "2px solid var(--bg-card)" }} />
-                    )}
-                  </div>
-                  <div style={{ flex: 1, overflow: "hidden" }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-main)", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
-                      {u.codmName}
+                    <div style={{ flex: 1, overflow: "hidden" }}>
+                      <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-main)", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                        {u.codmName}
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: isOnline ? "#22c55e" : "var(--text-muted)" }}>
+                        {isOnline
+                          ? "Active now"
+                          : lastSeenMins !== null
+                            ? `Last seen ${lastSeenMins}m ago`
+                            : u.rank
+                        }
+                      </div>
                     </div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{u.rank}</div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
