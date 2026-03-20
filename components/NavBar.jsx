@@ -69,6 +69,22 @@ export default function NavBar() {
   }, [pathname]);
 
   useEffect(() => {
+    if (!user) return;
+    const pingServer = async () => {
+      try {
+        await fetch("/api/ping", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.id })
+        });
+      } catch {}
+    };
+    pingServer();
+    const iv = setInterval(pingServer, 60000);
+    return () => clearInterval(iv);
+  }, [user]);
+
+  useEffect(() => {
     const savedTheme = localStorage.getItem("codm_theme") || "dark";
     setTheme(savedTheme);
     document.documentElement.setAttribute("data-theme", savedTheme);

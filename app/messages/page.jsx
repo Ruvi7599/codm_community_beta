@@ -11,6 +11,7 @@ function MessagesParamsChild({ initialUserId }) {
   const [activeChatId, setActiveChatId] = useState(initialUserId || null);
   const [messages, setMessages] = useState([]);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingChat, setLoadingChat] = useState(false);
   const [text, setText] = useState("");
@@ -43,6 +44,14 @@ function MessagesParamsChild({ initialUserId }) {
           });
         }
         setUnreadCounts(counts);
+        
+        // Refresh users to keep lastActive updated globally
+        fetch("/api/users")
+          .then(res => res.json())
+          .then(userData => {
+            setUsers(userData.filter(user => user.id !== currentUser.id));
+          }).catch(console.error);
+
       } catch {}
     };
     fetchUnread();
@@ -65,6 +74,11 @@ function MessagesParamsChild({ initialUserId }) {
             return data;
           });
           if (!silent) setLoadingChat(false);
+
+          // Fetch typing status
+          const tRes = await fetch(`/api/typing?userId=${currentUser.id}&otherUserId=${activeChatId}`);
+          const tData = await tRes.json();
+          setOtherUserTyping(tData.typing);
         } catch {}
       };
 
@@ -79,7 +93,21 @@ function MessagesParamsChild({ initialUserId }) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, otherUserTyping]);
+
+  useEffect(() => {
+    if (!activeChatId || !currentUser) return;
+    const sendTyping = async () => {
+      if (text.trim().length > 0) {
+        fetch("/api/typing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senderId: currentUser.id, receiverId: activeChatId })
+        }).catch(console.error);
+      }
+    };
+    sendTyping();
+  }, [text, activeChatId, currentUser]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -135,12 +163,24 @@ function MessagesParamsChild({ initialUserId }) {
                   marginBottom: "4px"
                 }}
               >
-                <div className="avatar-circle-sm" style={{ width: 40, height: 40, fontSize: "1rem" }}>
-                  {u.avatar ? <img src={u.avatar} alt={u.codmName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : u.codmName?.[0]?.toUpperCase()}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <div className="avatar-circle-sm" style={{ width: 40, height: 40, fontSize: "1rem" }}>
+                    {u.avatar ? <img src={u.avatar} alt={u.codmName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : u.codmName?.[0]?.toUpperCase()}
+                  </div>
+                  {u.lastActive && (Date.now() - u.lastActive < 300000) && (
+                    <div style={{ position: "absolute", bottom: 1, right: 1, width: 10, height: 10, background: "#22c55e", borderRadius: "50%", border: "2px solid var(--bg-card)" }} />
+                  )}
                 </div>
                 <div style={{ flex: 1, overflow: "hidden" }}>
                   <div style={{ fontWeight: 600, color: "var(--text-main)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.codmName}</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.rank}</div>
+                  <div style={{ fontSize: "0.72rem", color: u.lastActive && (Date.now() - u.lastActive < 300000) ? "#22c55e" : "var(--text-muted)" }}>
+                    {u.lastActive && (Date.now() - u.lastActive < 300000)
+                      ? "Active now"
+                      : u.lastActive
+                        ? `Last seen ${Math.floor((Date.now() - u.lastActive) / 60000)}m ago`
+                        : u.rank
+                    }
+                  </div>
                 </div>
                 {unreadCounts[u.id] > 0 && (
                   <div style={{ background: "#ef4444", color: "#fff", fontSize: "0.7rem", fontWeight: 700, padding: "2px 6px", borderRadius: "10px" }}>
@@ -166,8 +206,22 @@ function MessagesParamsChild({ initialUserId }) {
                     {activeUser.avatar ? <img src={activeUser.avatar} alt={activeUser.codmName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : activeUser.codmName?.[0]?.toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-main)" }}>{activeUser.codmName}</div>
-                    <Link href={`/profile/${activeUser.id}`} style={{ fontSize: "0.8rem", color: "var(--ember)", textDecoration: "none" }}>View Profile</Link>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-main)", lineHeight: 1.2 }}>{activeUser.codmName}</div>
+                      {activeUser.lastActive && (Date.now() - activeUser.lastActive < 300000) && (
+                        <div style={{ width: 8, height: 8, background: "#22c55e", borderRadius: "50%", title: "Active now" }} />
+                      )}
+                    </div>
+                    {otherUserTyping ? (
+                      <em style={{ fontSize: "0.8rem", color: "var(--ember)" }}>typing...</em>
+                    ) : (
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        {activeUser.lastActive && (Date.now() - activeUser.lastActive >= 300000) 
+                          ? `Last seen ${Math.floor((Date.now() - activeUser.lastActive)/60000)} mins ago` 
+                          : <Link href={`/profile/${activeUser.id}`} style={{ color: "var(--ember)", textDecoration: "none" }}>View Profile</Link>
+                        }
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button onClick={() => setShowClearConfirm(true)} className="btn-ghost" style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", color: "#ef4444", borderColor: "#ef444450" }}>
@@ -205,6 +259,18 @@ function MessagesParamsChild({ initialUserId }) {
                       </div>
                     );
                   })
+                )}
+                {otherUserTyping && (
+                  <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "4px" }}>
+                    <div style={{ 
+                      background: "var(--bg-surface)", color: "var(--text-muted)",
+                      padding: "0.5rem 1rem", borderRadius: "16px",
+                      borderBottomLeftRadius: "4px", fontSize: "0.85rem", fontStyle: "italic",
+                      border: "1px solid var(--border)", animation: "pulse 1.5s infinite"
+                    }}>
+                      typing<span style={{letterSpacing: "2px"}}>...</span>
+                    </div>
+                  </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>

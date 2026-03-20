@@ -13,6 +13,7 @@ export async function GET() {
         userRank: user?.rank || "",
         userAvatar: user?.avatar || null,
         userGender: user?.gender || null,
+        userLastActive: user?.lastActive || null,
         likedBy: post.likedBy || [],
         fires: post.fires || 0,
         comments: post.comments || [],

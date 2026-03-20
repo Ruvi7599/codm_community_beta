@@ -144,7 +144,9 @@ export default function PostCard({ post: initialPost, currentUser, savedPostIds 
               }
             </div>
             {/* Active Dot */}
-            <div style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, background: "#22c55e", borderRadius: "50%", border: "2px solid var(--bg-card)" }} title="Active now" />
+            {post.userLastActive && (Date.now() - post.userLastActive < 300000) && (
+              <div style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, background: "#22c55e", borderRadius: "50%", border: "2px solid var(--bg-card)" }} title="Active now" />
+            )}
           </div>
         </Link>
         <div style={{ flex: 1 }}>
