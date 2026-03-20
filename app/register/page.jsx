@@ -87,7 +87,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
           {/* Account info */}
           <p style={sectionTitle}>Account Info</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label style={labelStyle}>Full Name</label>
               <input className="input-field" name="name" placeholder="Your name" required value={form.name} onChange={handleChange} id="reg-name" />
@@ -113,7 +113,7 @@ export default function RegisterPage() {
 
           {/* CODM info */}
           <p style={{ ...sectionTitle, marginTop: "1rem" }}>CODM Identity</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label style={labelStyle}>CODM Name</label>
               <input className="input-field" name="codmName" placeholder="In-game name" required value={form.codmName} onChange={handleChange} id="reg-codmname" />
@@ -123,7 +123,7 @@ export default function RegisterPage() {
               <input className="input-field" name="codmId" placeholder="e.g. 12345678" value={form.codmId} onChange={handleChange} id="reg-codmid" />
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label style={labelStyle}>Rank</label>
               <select className="input-field" name="rank" value={form.rank} onChange={handleChange} id="reg-rank" style={{ cursor: "pointer" }}>

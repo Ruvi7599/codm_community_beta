@@ -192,7 +192,7 @@ export default function SettingsPage() {
 
               {/* Basic fields */}
               <div style={{ display: "grid", gap: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label style={{ display: "grid", gap: 4 }}>
                     <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>NAME</span>
                     <input className="input-field" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                     <input className="input-field" value={form.codmName} onChange={e => setForm(f => ({ ...f, codmName: e.target.value }))} />
                   </label>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label style={{ display: "grid", gap: 4 }}>
                     <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>CODM ID</span>
                     <input className="input-field" value={form.codmId} onChange={e => setForm(f => ({ ...f, codmId: e.target.value }))} />
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                     <input className="input-field" type="number" value={form.level} onChange={e => setForm(f => ({ ...f, level: e.target.value }))} />
                   </label>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label style={{ display: "grid", gap: 4 }}>
                     <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>RANK</span>
                     <select className="input-field" value={form.rank} onChange={e => setForm(f => ({ ...f, rank: e.target.value }))}>
