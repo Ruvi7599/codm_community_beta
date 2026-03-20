@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import { getCroppedImg } from "@/lib/cropUtils";
 
-const RANKS = ["Rookie", "Veteran", "Elite", "Pro", "Legendary"];
+const RANKS = ["Rookie", "Veteran", "Elite", "Pro", "Master", "Grandmaster", "Legendary"];
 
 export default function SettingsPage() {
   const router = useRouter();

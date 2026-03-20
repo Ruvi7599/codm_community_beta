@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const RANKS = ["Rookie", "Veteran", "Elite", "Pro", "Legendary"];
+const RANKS = ["Rookie", "Veteran", "Elite", "Pro", "Master", "Grandmaster", "Legendary"];
 
 export default function RegisterPage() {
   const router = useRouter();
