@@ -457,6 +457,28 @@ h1, h2, h3, h4 {
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* ========== NOTIFICATION DROPDOWN ========== */
+.notif-dropdown {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  min-width: 320px;
+  max-width: 360px;
+}
+
+@media (max-width: 768px) {
+  .notif-dropdown {
+    position: fixed !important;
+    top: 62px !important;
+    left: 8px !important;
+    right: 8px !important;
+    min-width: unset !important;
+    max-width: unset !important;
+    width: auto !important;
+    border-radius: 12px !important;
+  }
+}
+
 @keyframes fadeInDown {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }

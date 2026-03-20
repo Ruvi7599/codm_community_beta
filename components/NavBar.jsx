@@ -335,10 +335,9 @@ export default function NavBar() {
 
               {/* Notification Dropdown */}
               {bellOpen && (
-                <div style={{
-                  position: "absolute", top: "110%", right: 0,
+                <div className="notif-dropdown" style={{
                   background: "var(--bg-card)", border: "1px solid var(--border)",
-                  borderRadius: 12, minWidth: 320, maxWidth: 360, maxHeight: 420,
+                  borderRadius: 12, maxHeight: 420,
                   overflowY: "auto", zIndex: 100,
                   boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
                   animation: "fadeInDown 0.2s ease-out",
