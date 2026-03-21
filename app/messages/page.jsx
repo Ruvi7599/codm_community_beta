@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { appCache } from "@/lib/cache";
 
 function formatLastSeen(lastActive) {
   const diffMs = Date.now() - lastActive;
@@ -55,13 +56,15 @@ function MessagesParamsChild({ initialUserId }) {
   const router = useRouter();
   
   const [currentUser, setCurrentUser] = useState(null);
-  const [users, setUsers] = useState([]); 
+  const [users, setUsers] = useState(appCache.messagesContacts || []); 
   const [activeChatId, setActiveChatId] = useState(initialUserId || null);
-  const [messages, setMessages] = useState([]);
-  const [unreadCounts, setUnreadCounts] = useState({});
+  
+  const initialChatCache = (initialUserId && appCache.activeChats[initialUserId]) ? appCache.activeChats[initialUserId] : null;
+  const [messages, setMessages] = useState(initialChatCache ? initialChatCache.messages : []);
+  const [unreadCounts, setUnreadCounts] = useState(appCache.messagesUnreadCounts || {});
   const [otherUserTyping, setOtherUserTyping] = useState(false);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingChat, setLoadingChat] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(!appCache.messagesContacts);
+  const [loadingChat, setLoadingChat] = useState(!!initialUserId && !initialChatCache);
   const [text, setText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -84,12 +87,16 @@ function MessagesParamsChild({ initialUserId }) {
     if (!u) { router.push("/"); return; }
     setCurrentUser(JSON.parse(u));
 
-    fetch("/api/users")
-      .then(res => res.json())
-      .then(data => {
-        setUsers(data.filter(user => user.id !== JSON.parse(u).id));
-        setLoadingUsers(false);
-      });
+    if (!appCache.messagesContacts) {
+      fetch("/api/users")
+        .then(res => res.json())
+        .then(data => {
+          const filtered = data.filter(user => user.id !== JSON.parse(u).id);
+          setUsers(filtered);
+          appCache.messagesContacts = filtered;
+          setLoadingUsers(false);
+        });
+    }
   }, [router]);
 
   useEffect(() => {
@@ -105,11 +112,14 @@ function MessagesParamsChild({ initialUserId }) {
           });
         }
         setUnreadCounts(counts);
+        appCache.messagesUnreadCounts = counts;
         
         fetch("/api/users")
           .then(res => res.json())
           .then(userData => {
-            setUsers(userData.filter(user => user.id !== currentUser.id));
+            const filtered = userData.filter(user => user.id !== currentUser.id);
+            setUsers(filtered);
+            appCache.messagesContacts = filtered;
           }).catch(console.error);
 
       } catch {}
@@ -121,20 +131,33 @@ function MessagesParamsChild({ initialUserId }) {
 
   useEffect(() => {
     if (currentUser && activeChatId) {
-      setLoadingChat(true);
+      const cached = appCache.activeChats[activeChatId];
+      if (cached) {
+        setMessages(cached.messages);
+        setHasMoreMessages(cached.hasMore);
+        setLoadingChat(false);
+        setTimeout(scrollToBottom, 10);
+      } else {
+        setMessages([]);
+        setLoadingChat(true);
+      }
 
       const fetchInitialChat = async () => {
         try {
           const res = await fetch(`/api/messages?userId=${currentUser.id}&otherUserId=${activeChatId}&initial=true`);
           const data = await res.json();
+          let newMessages = [];
+          let newHasMore = false;
           if (data.messages) {
-            setMessages(data.messages);
-            setHasMoreMessages(data.hasMore);
+            newMessages = data.messages;
+            newHasMore = data.hasMore;
           } else {
-            setMessages(data);
-            setHasMoreMessages(false);
+            newMessages = data;
           }
+          setMessages(newMessages);
+          setHasMoreMessages(newHasMore);
           setLoadingChat(false);
+          appCache.activeChats[activeChatId] = { messages: newMessages, hasMore: newHasMore };
           setTimeout(scrollToBottom, 100);
 
           const tRes = await fetch(`/api/typing?userId=${currentUser.id}&otherUserId=${activeChatId}`);
@@ -143,7 +166,9 @@ function MessagesParamsChild({ initialUserId }) {
         } catch {}
       };
 
-      fetchInitialChat();
+      if (!cached) {
+        fetchInitialChat();
+      }
     } else {
       setMessages([]);
     }
@@ -170,7 +195,9 @@ function MessagesParamsChild({ initialUserId }) {
             const newMsgs = data.messages.filter(nm => !prev.find(p => p.id === nm.id));
             if (newMsgs.length === 0) return prev;
             setTimeout(scrollToBottom, 100);
-            return [...prev, ...newMsgs];
+            const combined = [...prev, ...newMsgs];
+            if (appCache.activeChats[activeChatId]) appCache.activeChats[activeChatId].messages = combined;
+            return combined;
           });
         } else if (Array.isArray(data) && data.length > 0 && !data.messages) {
            // Fallback if structured data not returned
@@ -178,7 +205,9 @@ function MessagesParamsChild({ initialUserId }) {
              const newMsgs = data.filter(nm => !prev.find(p => p.id === nm.id));
              if (newMsgs.length === 0) return prev;
              setTimeout(scrollToBottom, 100);
-             return [...prev, ...newMsgs];
+             const combined = [...prev, ...newMsgs];
+             if (appCache.activeChats[activeChatId]) appCache.activeChats[activeChatId].messages = combined;
+             return combined;
            });
         }
 
@@ -222,7 +251,14 @@ function MessagesParamsChild({ initialUserId }) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
           const prevScrollHeight = e.target.scrollHeight;
-          setMessages(prev => [...data.messages, ...prev]);
+          setMessages(prev => {
+             const updated = [...data.messages, ...prev];
+             if (appCache.activeChats[activeChatId]) {
+                appCache.activeChats[activeChatId].messages = updated;
+                appCache.activeChats[activeChatId].hasMore = data.hasMore;
+             }
+             return updated;
+          });
           setHasMoreMessages(data.hasMore);
           
           requestAnimationFrame(() => {
@@ -252,7 +288,11 @@ function MessagesParamsChild({ initialUserId }) {
       })
     });
     const newMsg = await res.json();
-    setMessages(prev => [...prev, newMsg]);
+    setMessages(prev => {
+       const combined = [...prev, newMsg];
+       if (appCache.activeChats[activeChatId]) appCache.activeChats[activeChatId].messages = combined;
+       return combined;
+    });
     setText("");
     setReplyingTo(null);
   };
