@@ -53,10 +53,10 @@ export default function FeedRightPanel() {
           <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>Loading...</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "400px", overflowY: "auto", paddingRight: "4px" }}>
-            {users.filter(u => 
+            {users.filter(u => u && (
               u.codmName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
               String(u.id).toLowerCase().includes(searchQuery.toLowerCase())
-            ).map(u => {
+            )).map(u => {
               const isOnline = u.lastActive && (Date.now() - u.lastActive < 300000);
               const lastSeenText = u.lastActive ? formatLastSeen(u.lastActive) : null;
               return (

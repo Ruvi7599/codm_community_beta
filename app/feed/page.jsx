@@ -111,7 +111,7 @@ export default function FeedPage() {
           </div>
         )}
 
-        {posts.map((post) => (
+        {posts.filter(p => p && p.id).map((post) => (
           <PostCard
             key={post.id}
             post={post}

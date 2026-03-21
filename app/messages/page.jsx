@@ -91,9 +91,11 @@ function MessagesParamsChild({ initialUserId }) {
       fetch("/api/users")
         .then(res => res.json())
         .then(data => {
-          const filtered = data.filter(user => user.id !== JSON.parse(u).id);
+          const filtered = (Array.isArray(data) ? data : []).filter(user => user && user.id !== JSON.parse(u).id);
           setUsers(filtered);
           appCache.messagesContacts = filtered;
+          setLoadingUsers(false);
+        }).catch(err => {
           setLoadingUsers(false);
         });
     }
@@ -117,7 +119,7 @@ function MessagesParamsChild({ initialUserId }) {
         fetch("/api/users")
           .then(res => res.json())
           .then(userData => {
-            const filtered = userData.filter(user => user.id !== currentUser.id);
+            const filtered = (Array.isArray(userData) ? userData : []).filter(user => user && user.id !== currentUser.id);
             setUsers(filtered);
             appCache.messagesContacts = filtered;
           }).catch(console.error);
@@ -192,7 +194,7 @@ function MessagesParamsChild({ initialUserId }) {
 
         if (data.messages && data.messages.length > 0) {
           setMessages(prev => {
-            const newMsgs = data.messages.filter(nm => !prev.find(p => p.id === nm.id));
+            const newMsgs = data.messages.filter(nm => nm && nm.id && !prev.find(p => p && p.id === nm.id));
             if (newMsgs.length === 0) return prev;
             setTimeout(scrollToBottom, 100);
             const combined = [...prev, ...newMsgs];
@@ -202,7 +204,7 @@ function MessagesParamsChild({ initialUserId }) {
         } else if (Array.isArray(data) && data.length > 0 && !data.messages) {
            // Fallback if structured data not returned
            setMessages(prev => {
-             const newMsgs = data.filter(nm => !prev.find(p => p.id === nm.id));
+             const newMsgs = data.filter(nm => nm && nm.id && !prev.find(p => p && p.id === nm.id));
              if (newMsgs.length === 0) return prev;
              setTimeout(scrollToBottom, 100);
              const combined = [...prev, ...newMsgs];
@@ -307,9 +309,9 @@ function MessagesParamsChild({ initialUserId }) {
     setMessages([]);
   };
 
-  const activeUser = users.find(u => u.id === activeChatId);
+  const activeUser = users.find(u => u && u.id === activeChatId);
   const isOtherOnline = activeUser?.lastActive && (Date.now() - activeUser.lastActive < 300000);
-  const filteredUsers = users.filter(u => u.codmName?.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredUsers = users.filter(u => u && u.codmName?.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-deep)", display: "flex", flexDirection: "column" }}>
@@ -431,7 +433,7 @@ function MessagesParamsChild({ initialUserId }) {
                     No messages yet. Say hi to {activeUser.codmName}!
                   </div>
                 ) : (
-                  messages.map(msg => {
+                  messages.filter(msg => msg).map(msg => {
                     const isMine = msg.senderId === currentUser.id;
                     return (
                       <div key={msg.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 2 }}>
