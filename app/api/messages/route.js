@@ -28,6 +28,7 @@ export async function GET(request) {
     const before = searchParams.get("before");
     const after = searchParams.get("after");
     const initial = searchParams.get("initial");
+    const limitParam = searchParams.get("limit");
 
     if (after) {
       const afterMsgs = chat.filter(m => new Date(m.createdAt) > new Date(after));
@@ -38,8 +39,8 @@ export async function GET(request) {
       chat = chat.filter(m => new Date(m.createdAt) < new Date(before));
     }
 
-    if (initial === "true" || before) {
-      const limit = 20;
+    if (initial === "true" || before || limitParam) {
+      const limit = parseInt(limitParam || "20");
       const start = Math.max(0, chat.length - limit);
       const paginated = chat.slice(start);
       return Response.json({

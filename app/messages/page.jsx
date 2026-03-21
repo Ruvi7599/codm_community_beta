@@ -58,13 +58,11 @@ function MessagesParamsChild({ initialUserId }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [users, setUsers] = useState(appCache.messagesContacts || []); 
   const [activeChatId, setActiveChatId] = useState(initialUserId || null);
-  
-  const initialChatCache = (initialUserId && appCache.activeChats[initialUserId]) ? appCache.activeChats[initialUserId] : null;
-  const [messages, setMessages] = useState(initialChatCache ? initialChatCache.messages : []);
+  const [messages, setMessages] = useState([]);
   const [unreadCounts, setUnreadCounts] = useState(appCache.messagesUnreadCounts || {});
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(!appCache.messagesContacts);
-  const [loadingChat, setLoadingChat] = useState(!!initialUserId && !initialChatCache);
+  const [loadingChat, setLoadingChat] = useState(!!initialUserId);
   const [text, setText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -133,16 +131,8 @@ function MessagesParamsChild({ initialUserId }) {
 
   useEffect(() => {
     if (currentUser && activeChatId) {
-      const cached = appCache.activeChats[activeChatId];
-      if (cached) {
-        setMessages(cached.messages);
-        setHasMoreMessages(cached.hasMore);
-        setLoadingChat(false);
-        setTimeout(scrollToBottom, 10);
-      } else {
-        setMessages([]);
-        setLoadingChat(true);
-      }
+      setMessages([]);
+      setLoadingChat(true);
 
       const fetchInitialChat = async () => {
         try {
@@ -159,7 +149,6 @@ function MessagesParamsChild({ initialUserId }) {
           setMessages(newMessages);
           setHasMoreMessages(newHasMore);
           setLoadingChat(false);
-          appCache.activeChats[activeChatId] = { messages: newMessages, hasMore: newHasMore };
           setTimeout(scrollToBottom, 100);
 
           const tRes = await fetch(`/api/typing?userId=${currentUser.id}&otherUserId=${activeChatId}`);
@@ -168,11 +157,10 @@ function MessagesParamsChild({ initialUserId }) {
         } catch {}
       };
 
-      if (!cached) {
-        fetchInitialChat();
-      }
+      fetchInitialChat();
     } else {
       setMessages([]);
+      setLoadingChat(false);
     }
   }, [currentUser, activeChatId]);
 
@@ -181,36 +169,20 @@ function MessagesParamsChild({ initialUserId }) {
 
     const interval = setInterval(async () => {
       try {
-        const latestDate = latestMessageDateRef.current;
-        let url = `/api/messages?userId=${currentUser.id}&otherUserId=${activeChatId}`;
-        if (latestDate) {
-          url += `&after=${latestDate}`;
-        } else {
-          url += `&initial=true`;
-        }
+        const limitToFetch = Math.max(20, messages.length);
+        const url = `/api/messages?userId=${currentUser.id}&otherUserId=${activeChatId}&limit=${limitToFetch}`;
 
         const res = await fetch(url);
         const data = await res.json();
 
         if (data.messages && data.messages.length > 0) {
           setMessages(prev => {
-            const newMsgs = data.messages.filter(nm => nm && nm.id && !prev.find(p => p && p.id === nm.id));
-            if (newMsgs.length === 0) return prev;
-            setTimeout(scrollToBottom, 100);
-            const combined = [...prev, ...newMsgs];
-            if (appCache.activeChats[activeChatId]) appCache.activeChats[activeChatId].messages = combined;
-            return combined;
+            const newMsgs = data.messages.filter(nm => nm && nm.id);
+            if (newMsgs.length > prev.length) {
+               setTimeout(scrollToBottom, 100);
+            }
+            return newMsgs;
           });
-        } else if (Array.isArray(data) && data.length > 0 && !data.messages) {
-           // Fallback if structured data not returned
-           setMessages(prev => {
-             const newMsgs = data.filter(nm => nm && nm.id && !prev.find(p => p && p.id === nm.id));
-             if (newMsgs.length === 0) return prev;
-             setTimeout(scrollToBottom, 100);
-             const combined = [...prev, ...newMsgs];
-             if (appCache.activeChats[activeChatId]) appCache.activeChats[activeChatId].messages = combined;
-             return combined;
-           });
         }
 
         const tRes = await fetch(`/api/typing?userId=${currentUser.id}&otherUserId=${activeChatId}`);
@@ -220,7 +192,7 @@ function MessagesParamsChild({ initialUserId }) {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [currentUser, activeChatId]);
+  }, [currentUser, activeChatId, messages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -255,10 +227,6 @@ function MessagesParamsChild({ initialUserId }) {
           const prevScrollHeight = e.target.scrollHeight;
           setMessages(prev => {
              const updated = [...data.messages, ...prev];
-             if (appCache.activeChats[activeChatId]) {
-                appCache.activeChats[activeChatId].messages = updated;
-                appCache.activeChats[activeChatId].hasMore = data.hasMore;
-             }
              return updated;
           });
           setHasMoreMessages(data.hasMore);
@@ -292,7 +260,6 @@ function MessagesParamsChild({ initialUserId }) {
     const newMsg = await res.json();
     setMessages(prev => {
        const combined = [...prev, newMsg];
-       if (appCache.activeChats[activeChatId]) appCache.activeChats[activeChatId].messages = combined;
        return combined;
     });
     setText("");
