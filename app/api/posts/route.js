@@ -1,6 +1,9 @@
 import { readDB, writeDB } from "@/lib/db";
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const page = searchParams.get("page");
+
   const db = await readDB();
 
   const postsWithUser = db.posts
@@ -21,6 +24,14 @@ export async function GET() {
       };
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (page) {
+    const p = parseInt(page);
+    const limit = 10;
+    const start = (p - 1) * limit;
+    const paginated = postsWithUser.slice(start, start + limit);
+    return Response.json({ posts: paginated, hasMore: start + limit < postsWithUser.length });
+  }
 
   return Response.json(postsWithUser);
 }

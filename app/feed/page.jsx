@@ -12,27 +12,49 @@ export default function FeedPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   useEffect(() => {
     const u = localStorage.getItem("codm_user");
     if (!u) { router.push("/"); return; }
     const parsed = JSON.parse(u);
     setUser(parsed);
-    loadPosts(false);
-
-    const intervalId = setInterval(() => {
-      loadPosts(true);
-    }, 3000);
-    return () => clearInterval(intervalId);
+    loadPosts(1, false);
   }, []);
 
-  async function loadPosts(silent = false) {
-    if (!silent) setLoading(true);
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loading || loadingMore || !hasMore) return;
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        loadPosts(nextPage, true);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, loadingMore, hasMore, page]);
+
+  async function loadPosts(pageToLoad = 1, isAppending = false) {
+    if (!isAppending) setLoading(true);
+    else setLoadingMore(true);
+
     try {
-      const res = await fetch("/api/posts");
+      const res = await fetch(`/api/posts?page=${pageToLoad}`);
       const data = await res.json();
-      setPosts(data);
+      
+      if (data.posts) {
+        setPosts(prev => isAppending ? [...prev, ...data.posts] : data.posts);
+        setHasMore(data.hasMore);
+      } else {
+        setPosts(data);
+        setHasMore(false);
+      }
     } finally {
-      if (!silent) setLoading(false);
+      if (!isAppending) setLoading(false);
+      else setLoadingMore(false);
     }
   }
 

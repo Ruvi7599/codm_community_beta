@@ -66,6 +66,17 @@ function MessagesParamsChild({ initialUserId }) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null); // { id, text, senderName }
   const messagesEndRef = useRef(null);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const latestMessageDateRef = useRef("");
+
+  useEffect(() => {
+    if (messages.length > 0) {
+       latestMessageDateRef.current = messages[messages.length - 1].createdAt;
+    } else {
+       latestMessageDateRef.current = "";
+    }
+  }, [messages]);
 
   useEffect(() => {
     const u = localStorage.getItem("codm_user");
@@ -111,17 +122,19 @@ function MessagesParamsChild({ initialUserId }) {
     if (currentUser && activeChatId) {
       setLoadingChat(true);
 
-      const fetchActiveChat = async (silent = false) => {
+      const fetchInitialChat = async () => {
         try {
-          const res = await fetch(`/api/messages?userId=${currentUser.id}&otherUserId=${activeChatId}`);
+          const res = await fetch(`/api/messages?userId=${currentUser.id}&otherUserId=${activeChatId}&initial=true`);
           const data = await res.json();
-          setMessages(prev => {
-            if (prev.length !== data.length && silent) {
-              setTimeout(scrollToBottom, 100);
-            }
-            return data;
-          });
-          if (!silent) setLoadingChat(false);
+          if (data.messages) {
+            setMessages(data.messages);
+            setHasMoreMessages(data.hasMore);
+          } else {
+            setMessages(data);
+            setHasMoreMessages(false);
+          }
+          setLoadingChat(false);
+          setTimeout(scrollToBottom, 100);
 
           const tRes = await fetch(`/api/typing?userId=${currentUser.id}&otherUserId=${activeChatId}`);
           const tData = await tRes.json();
@@ -129,13 +142,52 @@ function MessagesParamsChild({ initialUserId }) {
         } catch {}
       };
 
-      fetchActiveChat(false);
-      const iv = setInterval(() => fetchActiveChat(true), 3000);
-      return () => clearInterval(iv);
-
+      fetchInitialChat();
     } else {
       setMessages([]);
     }
+  }, [currentUser, activeChatId]);
+
+  useEffect(() => {
+    if (!currentUser || !activeChatId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latestDate = latestMessageDateRef.current;
+        let url = `/api/messages?userId=${currentUser.id}&otherUserId=${activeChatId}`;
+        if (latestDate) {
+          url += `&after=${latestDate}`;
+        } else {
+          url += `&initial=true`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.messages && data.messages.length > 0) {
+          setMessages(prev => {
+            const newMsgs = data.messages.filter(nm => !prev.find(p => p.id === nm.id));
+            if (newMsgs.length === 0) return prev;
+            setTimeout(scrollToBottom, 100);
+            return [...prev, ...newMsgs];
+          });
+        } else if (Array.isArray(data) && data.length > 0 && !data.messages) {
+           // Fallback if structured data not returned
+           setMessages(prev => {
+             const newMsgs = data.filter(nm => !prev.find(p => p.id === nm.id));
+             if (newMsgs.length === 0) return prev;
+             setTimeout(scrollToBottom, 100);
+             return [...prev, ...newMsgs];
+           });
+        }
+
+        const tRes = await fetch(`/api/typing?userId=${currentUser.id}&otherUserId=${activeChatId}`);
+        const tData = await tRes.json();
+        setOtherUserTyping(tData.typing);
+      } catch {}
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, [currentUser, activeChatId]);
 
   useEffect(() => {
@@ -158,6 +210,30 @@ function MessagesParamsChild({ initialUserId }) {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleScrollChat = async (e) => {
+    if (e.target.scrollTop === 0 && hasMoreMessages && !loadingOlder && messages.length > 0) {
+      setLoadingOlder(true);
+      const oldestDate = messages[0].createdAt;
+      try {
+        const res = await fetch(`/api/messages?userId=${currentUser.id}&otherUserId=${activeChatId}&before=${oldestDate}`);
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          const prevScrollHeight = e.target.scrollHeight;
+          setMessages(prev => [...data.messages, ...prev]);
+          setHasMoreMessages(data.hasMore);
+          
+          requestAnimationFrame(() => {
+            e.target.scrollTop = e.target.scrollHeight - prevScrollHeight;
+          });
+        } else {
+          setHasMoreMessages(false);
+        }
+      } finally {
+        setLoadingOlder(false);
+      }
+    }
   };
 
   const handleSend = async (e) => {
@@ -284,7 +360,12 @@ function MessagesParamsChild({ initialUserId }) {
               </div>
 
               {/* Chat Messages */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem", background: "var(--bg-deep)" }}>
+              <div 
+                onScroll={handleScrollChat}
+                style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem", background: "var(--bg-deep)" }}
+              >
+                {loadingOlder && <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.8rem", padding: "8px" }}>Loading older messages...</div>}
+                
                 {loadingChat ? (
                   <div style={{ textAlign: "center", color: "var(--text-muted)", marginTop: "auto", marginBottom: "auto" }}>Loading messages...</div>
                 ) : messages.length === 0 ? (

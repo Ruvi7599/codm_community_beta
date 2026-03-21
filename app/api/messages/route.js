@@ -20,10 +20,34 @@ export async function GET(request) {
     });
     if (changed) await writeDB(db);
 
-    const chat = db.messages.filter(m => 
+    let chat = db.messages.filter(m => 
       (m.senderId === userId && m.receiverId === otherUserId) ||
       (m.senderId === otherUserId && m.receiverId === userId)
     ).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    const before = searchParams.get("before");
+    const after = searchParams.get("after");
+    const initial = searchParams.get("initial");
+
+    if (after) {
+      const afterMsgs = chat.filter(m => new Date(m.createdAt) > new Date(after));
+      return Response.json({ messages: afterMsgs, hasMore: false });
+    }
+
+    if (before) {
+      chat = chat.filter(m => new Date(m.createdAt) < new Date(before));
+    }
+
+    if (initial === "true" || before) {
+      const limit = 20;
+      const start = Math.max(0, chat.length - limit);
+      const paginated = chat.slice(start);
+      return Response.json({
+        messages: paginated,
+        hasMore: start > 0
+      });
+    }
+
     return Response.json(chat);
   }
 
