@@ -5,15 +5,16 @@ import Link from "next/link";
 import PostCard from "@/components/PostCard";
 import FeedLeftPanel from "@/components/FeedLeftPanel";
 import FeedRightPanel from "@/components/FeedRightPanel";
+import { appCache } from "@/lib/cache";
 
 export default function FeedPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState(appCache.feedPosts || []);
+  const [loading, setLoading] = useState(!appCache.feedPosts);
 
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(appCache.feedPage || 1);
+  const [hasMore, setHasMore] = useState(appCache.feedHasMore ?? true);
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
@@ -21,7 +22,9 @@ export default function FeedPage() {
     if (!u) { router.push("/"); return; }
     const parsed = JSON.parse(u);
     setUser(parsed);
-    loadPosts(1, false);
+    if (!appCache.feedPosts) {
+      loadPosts(1, false);
+    }
   }, []);
 
   useEffect(() => {
@@ -46,11 +49,20 @@ export default function FeedPage() {
       const data = await res.json();
       
       if (data.posts) {
-        setPosts(prev => isAppending ? [...prev, ...data.posts] : data.posts);
+        setPosts(prev => {
+          const newPosts = isAppending ? [...prev, ...data.posts] : data.posts;
+          appCache.feedPosts = newPosts;
+          return newPosts;
+        });
         setHasMore(data.hasMore);
+        appCache.feedHasMore = data.hasMore;
+        appCache.feedPage = pageToLoad;
       } else {
         setPosts(data);
         setHasMore(false);
+        appCache.feedPosts = data;
+        appCache.feedHasMore = false;
+        appCache.feedPage = 1;
       }
     } finally {
       if (!isAppending) setLoading(false);

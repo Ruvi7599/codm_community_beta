@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { appCache } from "@/lib/cache";
 
 function formatLastSeen(lastActive) {
   const diffMs = Date.now() - lastActive;
@@ -12,8 +13,8 @@ function formatLastSeen(lastActive) {
 }
 
 export default function FeedRightPanel() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState(appCache.activeUsers || []);
+  const [loading, setLoading] = useState(!appCache.activeUsers);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -22,11 +23,12 @@ export default function FeedRightPanel() {
         .then(res => res.json())
         .then(data => {
           setUsers(data);
+          appCache.activeUsers = data;
           setLoading(false);
         })
         .catch(() => setLoading(false));
     };
-    fetchUsers();
+    if (!appCache.activeUsers) fetchUsers();
     const iv = setInterval(fetchUsers, 30000); // refresh every 30s
     return () => clearInterval(iv);
   }, []);
