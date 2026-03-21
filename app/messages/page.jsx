@@ -63,6 +63,7 @@ function MessagesParamsChild({ initialUserId }) {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingChat, setLoadingChat] = useState(false);
   const [text, setText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null); // { id, text, senderName }
   const messagesEndRef = useRef(null);
@@ -268,6 +269,7 @@ function MessagesParamsChild({ initialUserId }) {
 
   const activeUser = users.find(u => u.id === activeChatId);
   const isOtherOnline = activeUser?.lastActive && (Date.now() - activeUser.lastActive < 300000);
+  const filteredUsers = users.filter(u => u.codmName?.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-deep)", display: "flex", flexDirection: "column" }}>
@@ -276,11 +278,27 @@ function MessagesParamsChild({ initialUserId }) {
         {/* Sidebar */}
         <div className={`glass-card messages-sidebar ${activeChatId ? 'hidden-on-mobile' : ''}`} style={{ width: 300, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "1rem", borderBottom: "1px solid var(--border)", background: "var(--bg-surface)" }}>
-            <h2 style={{ fontFamily: "Rajdhani, sans-serif", fontWeight: 700, margin: 0 }}>Messages</h2>
+            <h2 style={{ fontFamily: "Rajdhani, sans-serif", fontWeight: 700, margin: 0, marginBottom: "0.75rem" }}>Messages</h2>
+            <div style={{ position: "relative" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: '12px', top: '50%', transform: "translateY(-50%)" }}>
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input 
+                type="text" 
+                placeholder="Search..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="input-field"
+                style={{ paddingLeft: "34px", fontSize: "0.85rem", padding: "0.4rem 0.4rem 0.4rem 34px", borderRadius: "20px", background: "var(--bg-deep)" }}
+              />
+            </div>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "0.5rem" }}>
+          <div className="messages-sidebar-list" style={{ flex: 1, overflowY: "auto", padding: "0.5rem" }}>
             {loadingUsers ? <div style={{ padding: "1rem", color: "var(--text-muted)", textAlign: "center" }}>Loading contacts...</div> : null}
-            {!loadingUsers && users.map(u => (
+            {!loadingUsers && filteredUsers.length === 0 && (
+              <div style={{ padding: "1rem", color: "var(--text-muted)", textAlign: "center", fontSize: "0.85rem" }}>No users found.</div>
+            )}
+            {!loadingUsers && filteredUsers.map(u => (
               <div 
                 key={u.id}
                 onClick={() => { setActiveChatId(u.id); setReplyingTo(null); }}

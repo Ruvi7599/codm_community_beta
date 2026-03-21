@@ -39,10 +39,15 @@ h1, h2, h3, h4 {
 }
 
 /* ========== SCROLLBAR ========== */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg-deep); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--ember); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(136, 146, 164, 0.25); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(249, 115, 22, 0.6); }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(136, 146, 164, 0.25) transparent;
+}
 
 /* ========== GLASS CARD ========== */
 .glass-card {
