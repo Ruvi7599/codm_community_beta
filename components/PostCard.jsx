@@ -132,7 +132,7 @@ export default function PostCard({ post: initialPost, currentUser, savedPostIds 
   }
 
   return (
-    <div className="glass-card" style={{ padding: "1rem", marginBottom: "1rem" }}>
+    <div id={`post-${post.id}`} className="glass-card" style={{ padding: "1rem", marginBottom: "1rem" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
         <Link href={`/profile/${post.userId}`} style={{ textDecoration: "none" }}>

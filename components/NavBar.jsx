@@ -22,16 +22,24 @@ function playNotificationSound() {
 }
 
 // Browser push notification
-function showBrowserNotification(title, body) {
+function showBrowserNotification(title, body, url) {
   if (typeof window === "undefined") return;
   if (!("Notification" in window)) return;
+  
+  const options = { body, icon: "/logo.png" };
+  const show = (title, opts) => {
+    const n = new Notification(title, opts);
+    n.onclick = () => {
+       window.focus();
+       if (url) window.location.href = url;
+    };
+  };
+
   if (Notification.permission === "granted") {
-    new Notification(title, { body, icon: "/logo.png" });
+    show(title, options);
   } else if (Notification.permission !== "denied") {
     Notification.requestPermission().then(p => {
-      if (p === "granted") {
-        new Notification(title, { body, icon: "/logo.png" });
-      }
+      if (p === "granted") show(title, options);
     });
   }
 }
@@ -96,7 +104,7 @@ export default function NavBar() {
           if (brandNew.length > 0 && lastSeenNotifIds.current.size > 0) {
             playNotificationSound();
             brandNew.slice(0, 3).forEach(n => {
-              showBrowserNotification("CODM LK", n.text);
+              showBrowserNotification("CODM LK", n.text, n.link);
             });
           }
           lastSeenNotifIds.current = currentIds;
@@ -128,7 +136,7 @@ export default function NavBar() {
           
           if (newMessages.length > 0 && lastUnreadIds.current.size > 0) {
              newMessages.forEach(msg => {
-               setToastQueue(prev => [...prev, { id: msg.id, text: `New message from ${msg.senderName || "Someone"}!` }]);
+               setToastQueue(prev => [...prev, { id: msg.id, text: `New message from ${msg.senderName || "Someone"}!`, link: `/messages?u=${msg.senderId}` }]);
              });
           }
           lastUnreadIds.current = currentIds;
@@ -503,7 +511,7 @@ export default function NavBar() {
         {toastQueue.map(toast => (
           <div key={toast.id} className="glass-card toast-enter" style={{ padding: "12px 20px", background: "var(--bg-surface)", borderLeft: "4px solid var(--ember)", color: "var(--text-main)", fontSize: "0.9rem", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: "10px", pointerEvents: "auto" }}>
             <span>📩 {toast.text}</span>
-            <Link href="/messages" style={{ color: "var(--ember)", textDecoration: "none", fontWeight: 700, fontSize: "0.8rem", marginLeft: "10px" }}>Open</Link>
+            <Link href={toast.link || "/messages"} onClick={() => setToastQueue(prev => prev.filter(t => t.id !== toast.id))} style={{ color: "var(--ember)", textDecoration: "none", fontWeight: 700, fontSize: "0.8rem", marginLeft: "10px" }}>Open</Link>
           </div>
         ))}
       </div>

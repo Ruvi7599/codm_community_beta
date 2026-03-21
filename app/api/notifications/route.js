@@ -23,7 +23,7 @@ export async function GET(request) {
           id: `post_${p.id}`,
           type: "post",
           text: `${poster?.codmName || "Someone"} shared a new post`,
-          link: "/feed",
+          link: `/feed#post-${p.id}`,
           createdAt: p.createdAt,
         });
       });
@@ -41,7 +41,7 @@ export async function GET(request) {
               id: `comment_${c.id}`,
               type: "comment",
               text: `${c.codmName || "Someone"} commented on your post`,
-              link: "/feed",
+              link: `/feed#post-${p.id}`,
               createdAt: c.createdAt,
             });
           });
