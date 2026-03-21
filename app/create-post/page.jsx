@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Cropper from "react-easy-crop";
 import { getCroppedImgBase64 } from "@/lib/cropImage";
 import { useRouter } from "next/navigation";
+import { appCache } from "@/lib/cache";
 
 const MAX_CHARS = 500;
 
@@ -87,6 +88,8 @@ export default function CreatePostPage() {
 
     setLoading(false);
     if (!res.ok) { setError("Failed to post"); return; }
+    appCache.feedPosts = null;
+    appCache.feedPage = 1;
     router.push("/feed");
   }
 
